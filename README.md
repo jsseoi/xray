@@ -1,17 +1,21 @@
-# Universal UI Snapper
+# xray
+
+[한국어](./README.ko.md)
+
+Universal UI capture and inspection tool.
 
 macOS Desktop application for inspecting and capturing UI elements across the entire system, similar to Chrome DevTools inspector but for the OS.
 
-## 🚀 Features
+## Features
 
 - **Global Inspector:** Hover over any window, button, or UI element on your screen to see it highlighted.
 - **Smart Capture:** Click the highlighted element to instantly capture it to your clipboard.
 - **System Tray Integration:** Runs quietly in the background.
 - **Global Shortcut:** Activate the inspector on demand.
 
-## 🛠️ Setup & Installation
+## Setup & Installation
 
-1.  **Clone the repository** (if applicable).
+1.  **Clone the repository**
 2.  **Install Dependencies:**
     ```bash
     npm install
@@ -21,7 +25,7 @@ macOS Desktop application for inspecting and capturing UI elements across the en
     npm run tauri dev
     ```
 
-## 🎮 How to Use
+## How to Use
 
 1.  **Grant Permissions:**
     *   On first launch, you must grant **Accessibility** and **Screen Recording** permissions to the app (or your terminal if running in dev mode).
@@ -39,12 +43,12 @@ macOS Desktop application for inspecting and capturing UI elements across the en
 4.  **Quit:**
     *   Click the tray icon in the menu bar and select **Quit**.
 
-## 🏗️ Architecture
+## Architecture
 
 - **Frontend:** React + TypeScript (Visual Overlay)
 - **Backend:** Rust (Tauri, Accessibility API, CoreGraphics)
 - **State Management:** Tauri Events (`element-hover`)
 
-## 📝 License
+## License
 
 [MIT](LICENSE)
