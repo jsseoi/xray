@@ -56,12 +56,12 @@ macOS Desktop application for inspecting and capturing UI elements across the en
 
 2.  **Start Inspection:**
     *   The app launches in the background (check the Menu Bar for the icon).
-    *   Press **`Cmd + Shift + X`** (or `Ctrl + Shift + X`) to activate the overlay.
+    *   Press <kbd>Cmd</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd> (or <kbd>Ctrl</kbd> + <kbd>Shift</kbd> + <kbd>X</kbd>) to activate the overlay.
 
 3.  **Capture:**
     *   Move your mouse to highlight the desired UI element.
     *   **Click** to capture.
-    *   The overlay will close, and the screenshot is now in your **Clipboard**. Paste it anywhere (`Cmd + V`).
+    *   The overlay will close, and the screenshot is now in your **Clipboard**. Paste it anywhere (<kbd>Cmd</kbd> + <kbd>V</kbd>).
 
 4.  **Quit:**
     *   Click the tray icon in the menu bar and select **Quit**.
