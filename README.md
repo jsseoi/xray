@@ -3,16 +3,27 @@
 [한국어](./README.ko.md)
 
 <div align="center">
-  <img 
-    src="https://github.com/user-attachments/assets/e15d9ae4-d06d-4130-9564-3e446bc4b6db" 
-    alt="xray-apple"
-    width="80%"
-    height="80%"
-  />
-  <p><em>Web page element capture</em></p>
+  <table>
+    <tr>
+      <td align="center">
+        <img src="https://github.com/user-attachments/assets/e15d9ae4-d06d-4130-9564-3e446bc4b6db" width="100%" />
+        <br />
+        <em>Web page element capture</em>
+      </td>
+      <td align="center">
+        <img src="https://github.com/user-attachments/assets/a2f2ce9c-12ae-48af-a5d4-655d2d90baef" width="85%" />
+        <br />
+        <em>MAC OS Program element capture</em>
+      </td>
+    </tr>
+  </table>
 </div>
 
+</br>
 
+Universal UI capture and inspection tool.
+
+macOS Desktop application for inspecting and capturing UI elements across the entire system, similar to Chrome DevTools inspector but for the OS.
 
 Universal UI capture and inspection tool.
 
