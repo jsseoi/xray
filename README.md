@@ -2,6 +2,18 @@
 
 [한국어](./README.ko.md)
 
+<div align="center">
+  <img 
+    src="https://github.com/user-attachments/assets/e15d9ae4-d06d-4130-9564-3e446bc4b6db" 
+    alt="xray-apple"
+    width="80%"
+    height="80%"
+  />
+  <p><em>Web page element capture</em></p>
+</div>
+
+
+
 Universal UI capture and inspection tool.
 
 macOS Desktop application for inspecting and capturing UI elements across the entire system, similar to Chrome DevTools inspector but for the OS.
