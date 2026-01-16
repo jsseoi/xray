@@ -11,28 +11,28 @@ use std::time::Duration;
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
 
-/// 애플리케이션의 전역 상태를 관리합니다.
+/// Manages the application's global state.
 struct AppState {
-    /// 현재 마우스가 호버 중인 UI 요소의 정보
+    /// Information about the UI element currently being hovered over.
     current_info: Mutex<Option<accessibility::UIElementInfo>>,
-    /// 현재 캡처 모드(오버레이 활성화)인지 여부
+    /// Whether capture mode (overlay enabled) is currently active.
     is_snip_active: AtomicBool,
 }
 
-/// 메인 오버레이 윈도우를 숨기는 커맨드입니다.
+/// Command to hide the main overlay window.
 #[tauri::command]
 fn hide_window(window: tauri::WebviewWindow, state: tauri::State<AppState>) {
     state.is_snip_active.store(false, Ordering::Relaxed);
     let _ = window.hide();
 }
 
-/// 캡처 모드를 시작합니다. (윈도우를 표시하고 접근성 탐색을 활성화)
+/// Starts capture mode (shows the window and enables accessibility scanning).
 fn start_snip(app: &tauri::AppHandle) {
     if let Some(state) = app.try_state::<AppState>() {
         state.is_snip_active.store(true, Ordering::Relaxed);
     }
     if let Some(window) = app.get_webview_window("main") {
-        // 마우스 클릭이 오버레이를 통과하여 아래의 실제 앱에 닿도록 설정
+        // Allows mouse clicks to pass through the overlay to the underlying application.
         let _ = window.set_ignore_cursor_events(true);
         let _ = window.show();
         let _ = window.set_focus();
@@ -50,7 +50,7 @@ pub fn run() {
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_shortcut("CommandOrControl+Shift+X")
-                .expect("전역 단축키 등록 실패")
+                .expect("Failed to register global shortcut")
                 .with_handler(|app, _shortcut, event| {
                     if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
                         start_snip(app);
@@ -59,7 +59,7 @@ pub fn run() {
                 .build(),
         )
         .setup(|app| {
-            // 시스템 트레이 메뉴 설정
+            // Set up the system tray menu.
             let quit_i = MenuItem::with_id(app, "quit", "Quit", true, None::<&str>)?;
             let snip_i = MenuItem::with_id(app, "snip", "Snip Screen", true, None::<&str>)?;
             let menu = Menu::with_items(app, &[&snip_i, &quit_i])?;
@@ -78,7 +78,7 @@ pub fn run() {
 
             let handle = app.handle().clone();
             
-            // 1. 접근성 및 입력 폴링 스레드
+            // 1. Accessibility and input polling thread.
             let handle_access = handle.clone();
             thread::spawn(move || {
                 let mut current_monitor_pos: Option<(i32, i32)> = None;
@@ -112,9 +112,9 @@ pub fn run() {
                                      info.window_id,
                                      info.role.clone()
                                  ) {
-                                     eprintln!("캡처 실패: {}", e);
+                                     eprintln!("Capture failed: {}", e);
                                  } else {
-                                     println!("클립보드에 복사되었습니다!");
+                                     println!("Copied to clipboard!");
                                  }
                              }
                          }
@@ -183,5 +183,5 @@ pub fn run() {
         })
         .invoke_handler(tauri::generate_handler![capture::capture_rect, hide_window])
         .run(tauri::generate_context!())
-        .expect("Tauri 실행 중 오류 발생");
+        .expect("Error while running Tauri application");
 }

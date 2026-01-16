@@ -14,7 +14,7 @@ function App() {
   const [highlight, setHighlight] = useState<UIElementInfo | null>(null);
 
   useEffect(() => {
-    // Rust 백엔드로부터 'element-hover' 이벤트를 수신하여 하이라이트 박스 좌표를 갱신합니다.
+    // Listen for the 'element-hover' event from the Rust backend to update the highlight box coordinates.
     const unlistenPromise = listen<UIElementInfo>("element-hover", (event) => {
       setHighlight(event.payload);
     });
@@ -25,7 +25,7 @@ function App() {
   }, []);
 
   useEffect(() => {
-    // ESC 키를 누르면 오버레이 창을 숨깁니다.
+    // Hide the overlay window when the ESC key is pressed.
     const handleKeyDown = (e: KeyboardEvent) => {
       if (e.key === "Escape") {
         invoke("hide_window");
@@ -59,7 +59,7 @@ function App() {
             backgroundColor: "rgba(255, 0, 0, 0.1)",
             pointerEvents: "none",
             boxSizing: "border-box",
-            transition: "all 0.05s ease-out", // 부드러운 박스 이동
+            transition: "all 0.05s ease-out", // Smooth box movement
           }}
         />
       )}
