@@ -1,14 +1,15 @@
+use crate::constants::{ax_attributes, ax_roles, ACCESSIBILITY_RECURSION_LIMIT};
+use accessibility_sys::{
+    kAXErrorSuccess, AXUIElementCopyAttributeValue, AXUIElementCopyElementAtPosition,
+    AXUIElementCreateSystemWide, AXUIElementRef, AXValueGetValue, AXValueRef,
+};
 use core_foundation::base::TCFType;
 use core_foundation::string::CFString;
 use core_graphics::geometry::{CGPoint, CGSize};
-use accessibility_sys::{
-    AXUIElementCreateSystemWide, AXUIElementCopyElementAtPosition,
-    AXUIElementCopyAttributeValue, AXValueGetValue,
-    kAXErrorSuccess, AXUIElementRef, AXValueRef,
-};
 use std::ffi::c_void;
 use std::ptr;
 
+/// Represents the geometry and metadata of a UI element found via accessibility APIs.
 #[derive(Clone, Debug, serde::Serialize)]
 pub struct UIElementInfo {
     pub x: f64,
@@ -38,7 +39,9 @@ extern "C" {
     fn CFArrayGetValueAtIndex(theArray: *const c_void, idx: isize) -> *const c_void;
 }
 
-/// Checks if the left mouse button is pressed.
+/// Checks if the left mouse button is currently pressed.
+///
+/// Uses `CGEventSourceButtonState` to query the HID system state.
 pub fn is_mouse_left_down() -> bool {
     unsafe {
         // kCGEventSourceStateHIDSystemState = 1, kCGMouseButtonLeft = 0
@@ -46,11 +49,19 @@ pub fn is_mouse_left_down() -> bool {
     }
 }
 
-/// Finds the UI element at the mouse cursor's position.
+/// Finds the UI element at the current mouse cursor position.
+///
+/// This function performs the following steps:
+/// 1. Gets the current mouse location.
+/// 2. Queries the system-wide accessibility object for the element at that location.
+/// 3. Drills down into the element hierarchy to find the most specific leaf node.
+/// 4. Extracts position, size, and role information.
 pub fn get_element_at_mouse() -> Option<UIElementInfo> {
     unsafe {
-        // Get the current mouse coordinates.
-        let source = core_graphics::event_source::CGEventSource::new(core_graphics::event_source::CGEventSourceStateID::HIDSystemState).ok()?;
+        let source = core_graphics::event_source::CGEventSource::new(
+            core_graphics::event_source::CGEventSourceStateID::HIDSystemState,
+        )
+        .ok()?;
         let event = core_graphics::event::CGEvent::new(source).ok()?;
         let mouse_loc = event.location();
 
@@ -74,188 +85,203 @@ pub fn get_element_at_mouse() -> Option<UIElementInfo> {
             return None;
         }
 
-        // Deep Drill Down
-        // To find leaf nodes like <img>, we search as deep as possible (up to 50 levels).
-        for _ in 0..50 { 
+        // Deep Drill Down: Search as deep as possible to find leaf nodes like <img>.
+        for _ in 0..ACCESSIBILITY_RECURSION_LIMIT {
             if let Some(child) = drill_down(element_ref, mouse_loc.x, mouse_loc.y) {
                 // Release the parent and move to the child.
                 core_foundation::base::CFRelease(element_ref as *const c_void);
                 element_ref = child;
             } else {
-                break; // If there are no more children, exit.
+                break; // No more children found, stop recursion.
             }
         }
 
         let pos = get_position(element_ref);
         let size = get_size(element_ref);
         let role = get_role(element_ref).unwrap_or_else(|| "Unknown".to_string());
-        
+
         let mut window_id: u32 = 0;
         let _ = _AXUIElementGetWindow(element_ref, &mut window_id);
 
         core_foundation::base::CFRelease(element_ref as *const c_void);
 
         if let (Some((x, y)), Some((w, h))) = (pos, size) {
-             Some(UIElementInfo { 
-                 x, 
-                 y, 
-                 width: w, 
-                 height: h,
-                 global_x: x,
-                 global_y: y,
-                 window_id,
-                 role
-             })
+            Some(UIElementInfo {
+                x,
+                y,
+                width: w,
+                height: h,
+                global_x: x,
+                global_y: y,
+                window_id,
+                role,
+            })
         } else {
             None
         }
     }
 }
 
-/// Drills down into a container element to find a more specific child under the mouse.
+/// Drills down into a container element to find a more specific child under the mouse coordinates.
 unsafe fn drill_down(element: AXUIElementRef, mx: f64, my: f64) -> Option<AXUIElementRef> {
-    let attr_name = CFString::new("AXChildren");
+    let attr_name = CFString::new(ax_attributes::CHILDREN);
     let mut value_ref: *const c_void = ptr::null();
-    
-    let result = AXUIElementCopyAttributeValue(
-        element,
-        attr_name.as_concrete_TypeRef(),
-        &mut value_ref,
-    );
+
+    let result =
+        AXUIElementCopyAttributeValue(element, attr_name.as_concrete_TypeRef(), &mut value_ref);
 
     if result == kAXErrorSuccess && !value_ref.is_null() {
         let count = CFArrayGetCount(value_ref);
-        
+
         let mut best_child: Option<AXUIElementRef> = None;
         let mut min_area = f64::MAX;
 
         // Iterate through all children to find the best fit.
         for i in 0..count {
-             let child_ptr = CFArrayGetValueAtIndex(value_ref, i) as AXUIElementRef;
-             
-             // Check the child element's position and size.
-             if let (Some((cx, cy)), Some((cw, ch))) = (get_position(child_ptr), get_size(child_ptr)) {
-                 // Check if the mouse is inside the child element (Hit Test).
-                 if mx >= cx && mx < cx + cw && my >= cy && my < cy + ch {
-                     let area = cw * ch;
-                     
-                     let mut update = false;
+            let child_ptr = CFArrayGetValueAtIndex(value_ref, i) as AXUIElementRef;
 
-                     // [Condition 1] If the area is smaller, it's always considered a more specific child element, so replace.
-                     if area < min_area {
-                         update = true;
-                     } 
-                     // [Condition 2] If areas are equal (overlapping) or very similar -> Decide based on Role priority.
-                     else if area == min_area {
-                         if let Some(best) = best_child {
-                             let best_role = get_role(best).unwrap_or_default();
-                             let curr_role = get_role(child_ptr).unwrap_or_default();
-                             
-                             // Tier 1: Visual final elements like images, checkboxes, etc.
-                             let is_tier_1 = |r: &str| r == "AXImage" || r == "AXCheckBox" || r == "AXRadioButton";
-                             
-                             // Tier 2: Text or buttons.
-                             let is_tier_2 = |r: &str| r == "AXStaticText" || r == "AXHeading" || r == "AXButton";
-                             
-                             // Tier 3: Containers (links, groups, etc.).
-                             let is_tier_3 = |r: &str| r == "AXLink" || r == "AXGroup" || r == "AXWebArea" || r == "AXScrollArea";
+            if let (Some((cx, cy)), Some((cw, ch))) = (get_position(child_ptr), get_size(child_ptr))
+            {
+                // Hit Test: Check if mouse is within bounds
+                if mx >= cx && mx < cx + cw && my >= cy && my < cy + ch {
+                    let area = cw * ch;
+                    let mut should_update = false;
 
-                             if is_tier_1(&curr_role) && !is_tier_1(&best_role) {
-                                 update = true; 
-                             } else if is_tier_2(&curr_role) && is_tier_3(&best_role) {
-                                 update = true; 
-                             } else if is_tier_1(&curr_role) && is_tier_1(&best_role) {
-                                 update = true; 
-                             }
-                         } else {
-                             update = true;
-                         }
-                     }
+                    // Strategy: Prefer smaller areas (more specific elements)
+                    if area < min_area {
+                        should_update = true;
+                    }
+                    // Tie-breaking: If areas are similar, use role priority
+                    else if (area - min_area).abs() < f64::EPSILON {
+                        should_update = should_update_based_on_role(best_child, child_ptr);
+                    }
 
-                     if update {
-                         min_area = area;
-                         best_child = Some(child_ptr);
-                     }
-                 }
-             }
+                    if should_update {
+                        min_area = area;
+                        best_child = Some(child_ptr);
+                    }
+                }
+            }
         }
-        
-        // Retain the final selected child and release the array.
+
+        // Retain the best child before releasing the array
         if let Some(child) = best_child {
             core_foundation::base::CFRetain(child as *const c_void);
             core_foundation::base::CFRelease(value_ref);
             return Some(child);
         }
-        
+
         core_foundation::base::CFRelease(value_ref);
     }
     None
 }
 
-/// Gets the role of the UI element.
+/// Helper function to decide if we should switch to the new child based on AXRole priority.
+unsafe fn should_update_based_on_role(
+    current_best: Option<AXUIElementRef>,
+    new_candidate: AXUIElementRef,
+) -> bool {
+    let Some(best) = current_best else {
+        return true;
+    };
+
+    let best_role = get_role(best).unwrap_or_default();
+    let new_role = get_role(new_candidate).unwrap_or_default();
+
+    // Tier 1: Visual final elements (Images, Checkboxes)
+    let is_tier_1 = |r: &str| {
+        matches!(
+            r,
+            ax_roles::IMAGE | ax_roles::CHECKBOX | ax_roles::RADIO_BUTTON
+        )
+    };
+
+    // Tier 2: Text or Interactive elements (Text, Buttons)
+    let is_tier_2 = |r: &str| {
+        matches!(
+            r,
+            ax_roles::STATIC_TEXT | ax_roles::HEADING | ax_roles::BUTTON
+        )
+    };
+
+    // Tier 3: Containers (Groups, Areas)
+    let is_tier_3 = |r: &str| {
+        matches!(
+            r,
+            ax_roles::LINK | ax_roles::GROUP | ax_roles::WEB_AREA | ax_roles::SCROLL_AREA
+        )
+    };
+
+    if is_tier_1(&new_role) && !is_tier_1(&best_role) {
+        return true;
+    }
+    if is_tier_2(&new_role) && is_tier_3(&best_role) {
+        return true;
+    }
+    if is_tier_1(&new_role) && is_tier_1(&best_role) {
+        return true;
+    }
+
+    false
+}
+
 unsafe fn get_role(element: AXUIElementRef) -> Option<String> {
-    let attr_name = CFString::new("AXRole");
-    let mut value_ref: *const c_void = ptr::null();
-    
-    let result = AXUIElementCopyAttributeValue(
-        element,
-        attr_name.as_concrete_TypeRef(),
-        &mut value_ref,
-    );
-
-    if result == kAXErrorSuccess && !value_ref.is_null() {
-         let cf_str = value_ref as core_foundation::string::CFStringRef;
-         let role_str = CFString::wrap_under_get_rule(cf_str).to_string();
-         core_foundation::base::CFRelease(value_ref);
-         return Some(role_str);
-    }
-    None
+    get_string_attribute(element, ax_attributes::ROLE)
 }
 
-/// Gets the global position of the UI element.
 unsafe fn get_position(element: AXUIElementRef) -> Option<(f64, f64)> {
-    let attr_name = CFString::new("AXPosition");
+    let attr_name = CFString::new(ax_attributes::POSITION);
     let mut value_ref: *const c_void = ptr::null();
-    
-    let result = AXUIElementCopyAttributeValue(
-        element,
-        attr_name.as_concrete_TypeRef(),
-        &mut value_ref, 
-    );
+
+    let result =
+        AXUIElementCopyAttributeValue(element, attr_name.as_concrete_TypeRef(), &mut value_ref);
 
     if result == kAXErrorSuccess && !value_ref.is_null() {
-         let val = value_ref as AXValueRef;
-         let mut point = CGPoint::default();
-         // kAXValueCGPointType = 1
-         let success = AXValueGetValue(val, 1, &mut point as *mut _ as *mut c_void);
-         core_foundation::base::CFRelease(value_ref);
-         if success {
-             return Some((point.x, point.y));
-         }
+        let val = value_ref as AXValueRef;
+        let mut point = CGPoint::default();
+        // kAXValueCGPointType = 1
+        let success = AXValueGetValue(val, 1, &mut point as *mut _ as *mut c_void);
+        core_foundation::base::CFRelease(value_ref);
+        if success {
+            return Some((point.x, point.y));
+        }
     }
     None
 }
 
-/// Gets the size (width, height) of the UI element.
 unsafe fn get_size(element: AXUIElementRef) -> Option<(f64, f64)> {
-    let attr_name = CFString::new("AXSize");
+    let attr_name = CFString::new(ax_attributes::SIZE);
     let mut value_ref: *const c_void = ptr::null();
-    
-    let result = AXUIElementCopyAttributeValue(
-        element,
-        attr_name.as_concrete_TypeRef(),
-        &mut value_ref,
-    );
+
+    let result =
+        AXUIElementCopyAttributeValue(element, attr_name.as_concrete_TypeRef(), &mut value_ref);
 
     if result == kAXErrorSuccess && !value_ref.is_null() {
-         let val = value_ref as AXValueRef;
-         let mut size = CGSize::default();
-         // kAXValueCGSizeType = 2
-         let success = AXValueGetValue(val, 2, &mut size as *mut _ as *mut c_void);
-         core_foundation::base::CFRelease(value_ref);
-         if success {
-             return Some((size.width, size.height));
-         }
+        let val = value_ref as AXValueRef;
+        let mut size = CGSize::default();
+        // kAXValueCGSizeType = 2
+        let success = AXValueGetValue(val, 2, &mut size as *mut _ as *mut c_void);
+        core_foundation::base::CFRelease(value_ref);
+        if success {
+            return Some((size.width, size.height));
+        }
+    }
+    None
+}
+
+/// Helper to get a string attribute from an AX element.
+unsafe fn get_string_attribute(element: AXUIElementRef, attribute: &str) -> Option<String> {
+    let attr_name = CFString::new(attribute);
+    let mut value_ref: *const c_void = ptr::null();
+
+    let result =
+        AXUIElementCopyAttributeValue(element, attr_name.as_concrete_TypeRef(), &mut value_ref);
+
+    if result == kAXErrorSuccess && !value_ref.is_null() {
+        let cf_str = value_ref as core_foundation::string::CFStringRef;
+        let ret_str = CFString::wrap_under_get_rule(cf_str).to_string();
+        core_foundation::base::CFRelease(value_ref);
+        return Some(ret_str);
     }
     None
 }
