@@ -43,14 +43,12 @@ fn start_capture_session(app: &tauri::AppHandle) {
 
 #[cfg_attr(mobile, tauri::mobile_entry_point)]
 pub fn run() {
-    let mut builder = tauri::Builder::default();
+    let builder = tauri::Builder::default();
 
     // Only enable logging in debug builds. 
     // In release builds, log macros (info!, error!, etc.) will do nothing.
     #[cfg(debug_assertions)]
-    {
-        builder = builder.plugin(tauri_plugin_log::Builder::new().build());
-    }
+    let builder = builder.plugin(tauri_plugin_log::Builder::new().build());
 
     builder
         .plugin(tauri_plugin_opener::init())

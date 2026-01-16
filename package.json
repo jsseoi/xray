@@ -1,13 +1,14 @@
 {
   "name": "xray",
   "private": true,
-  "version": "0.1.0",
+  "version": "1.1.0",
   "type": "module",
   "scripts": {
     "dev": "vite",
     "build": "tsc && vite build",
     "preview": "vite preview",
-    "tauri": "tauri"
+    "tauri": "tauri",
+    "build:to": "npm version $npm_config_new_version --no-git-tag-version && sed -i '' \"s/^version = \\\".*\\\"/version = \\\"$npm_config_new_version\\\"/\" src-tauri/Cargo.toml && npm run tauri build"
   },
   "dependencies": {
     "react": "^19.1.0",
