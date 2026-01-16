@@ -1,6 +1,26 @@
-# xray
+<p align="center">
+  <a href="https://github.com/wlswo/xray">
+	<picture>
+		<source media="(prefers-color-scheme: dark)" srcset="./assets/xray-logo.png">
+		<source media="(prefers-color-scheme: light)" srcset="./assets/xray-logo.png">
+		<img alt="Wave Terminal Logo" src="./assets/wave-light.png" width="100%">
+	</picture>
+  </a>
+  <br/>
+</p>
 
-[한국어](./README.ko.md)
+<img srcset="./assets/line-gradient.svg" alt="line break" width="100%" height="3px">
+
+<br/>
+<div align="center">
+
+**English** · [한국어](./README.KR.md) · [简体中文](./README_CN.md) · [日本語](./README_JA.md)
+
+</div>
+
+<img srcset="./assets/line-gradient.svg" alt="line break" width="100%" height="3px">
+
+<br/><br/>
 
 <div align="center">
   <table>
@@ -47,6 +67,24 @@ macOS Desktop application for inspecting and capturing UI elements across the en
     ```bash
     npm run tauri dev
     ```
+
+## Building for Production
+
+To build a production-ready application bundle:
+
+1.  **Standard Build:**
+    ```bash
+    npm run tauri build
+    ```
+
+2.  **Build with Version Update:**
+    If you want to specify a new version before building:
+    ```bash
+    npm run build:to --new_version=1.1.0
+    ```
+    *This command will update `package.json` and `Cargo.toml` to the specified version and then run the build process.*
+
+The generated application bundle will be located in `src-tauri/target/release/bundle/`.
 
 ## How to Use
 
