@@ -49,10 +49,6 @@ Universal UI capture and inspection tool.
 
 macOS Desktop application for inspecting and capturing UI elements across the entire system, similar to Chrome DevTools inspector but for the OS.
 
-Universal UI capture and inspection tool.
-
-macOS Desktop application for inspecting and capturing UI elements across the entire system, similar to Chrome DevTools inspector but for the OS.
-
 ## Features
 
 - **Global Inspector:** Hover over any window, button, or UI element on your screen to see it highlighted.
