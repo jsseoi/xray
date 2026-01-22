@@ -30,12 +30,12 @@
   <table>
     <tr>
       <td align="center">
-        <img src="https://github.com/user-attachments/assets/e15d9ae4-d06d-4130-9564-3e446bc4b6db" width="100%" />
+        <img src="https://github.com/user-attachments/assets/0968556c-ba2e-40ce-bd75-382f96e563a0" width="100%" />
         <br />
         <em>Web page element capture</em>
       </td>
       <td align="center">
-        <img src="https://github.com/user-attachments/assets/a2f2ce9c-12ae-48af-a5d4-655d2d90baef" width="85%" />
+        <img src="https://github.com/user-attachments/assets/fe0d774b-5b29-4fbd-bc72-c942f19eed90" width="85%" />
         <br />
         <em>MAC OS Program element capture</em>
       </td>
