@@ -2,9 +2,8 @@ use std::thread;
 use std::time::Duration;
 use std::sync::atomic::Ordering;
 use tauri::{Manager, Emitter, PhysicalPosition, PhysicalSize, AppHandle, Monitor};
-use log::{info, error};
-use crate::{accessibility, capture, AppState};
-use crate::constants::{EVENT_ELEMENT_HOVER, POLLING_INTERVAL_MS, WINDOW_HIDE_DELAY_MS, WINDOW_LABEL_MAIN};
+use crate::{accessibility, AppState};
+use crate::constants::{EVENT_CAPTURE_CLICK, EVENT_ELEMENT_HOVER, POLLING_INTERVAL_MS, WINDOW_HIDE_DELAY_MS, WINDOW_LABEL_MAIN};
 
 /// Spawns the background thread that handles mouse polling and screen capture logic.
 pub fn spawn_polling_thread(handle: AppHandle) {
@@ -62,20 +61,10 @@ fn handle_click_capture(handle: &AppHandle, state: &tauri::State<AppState>) {
         .ok()
         .flatten();
 
-    // 5. Execute capture
+    // 5. Emit capture-click event to frontend with element info.
+    //    The frontend will show the save dialog and invoke capture commands.
     if let Some(info) = rect_to_capture {
-        if let Err(e) = capture::capture_rect(
-            info.global_x, 
-            info.global_y, 
-            info.width, 
-            info.height,
-            info.window_id,
-            info.role
-        ) {
-            error!("Capture failed: {}", e);
-        } else {
-            info!("Copied to clipboard!");
-        }
+        let _ = handle.emit(EVENT_CAPTURE_CLICK, info);
     }
 }
 
