@@ -1,4 +1,4 @@
-import { useEffect, useRef, useState } from "react";
+import { useEffect, useState } from "react";
 import { listen } from "@tauri-apps/api/event";
 import { invoke } from "@tauri-apps/api/core";
 import { save } from "@tauri-apps/plugin-dialog";
@@ -17,16 +17,6 @@ interface UIElementInfo {
 
 function App() {
   const [highlight, setHighlight] = useState<UIElementInfo | null>(null);
-  const [showSettings, setShowSettings] = useState(false);
-  const [copyToClipboard, setCopyToClipboard] = useState(
-    () => localStorage.getItem("xray-copy-to-clipboard") !== "false"
-  );
-
-  // Keep copyToClipboard accessible inside the capture-click listener without re-registering
-  const copyToClipboardRef = useRef(copyToClipboard);
-  useEffect(() => {
-    copyToClipboardRef.current = copyToClipboard;
-  }, [copyToClipboard]);
 
   // Listen for element-hover events from the Rust backend
   useEffect(() => {
@@ -36,7 +26,7 @@ function App() {
     return () => { unlistenPromise.then((u) => u()); };
   }, []);
 
-  // Listen for capture-click: show save dialog, then invoke capture commands
+  // Listen for capture-click: show save dialog, then invoke capture command
   useEffect(() => {
     const unlistenPromise = listen<UIElementInfo>("capture-click", async (event) => {
       const info = event.payload;
@@ -45,6 +35,9 @@ function App() {
         defaultPath: `capture-${Date.now()}.png`,
         filters: [{ name: "PNG Image", extensions: ["png"] }],
       });
+
+      // Hide the overlay after the dialog closes (dialog may have brought the window back into view)
+      await invoke("hide_window");
 
       if (!path) return; // User cancelled the dialog
 
@@ -57,25 +50,6 @@ function App() {
         role: info.role,
         path,
       });
-
-      if (copyToClipboardRef.current) {
-        await invoke("capture_rect", {
-          x: info.globalX,
-          y: info.globalY,
-          width: info.width,
-          height: info.height,
-          windowId: info.windowId,
-          role: info.role,
-        });
-      }
-    });
-    return () => { unlistenPromise.then((u) => u()); };
-  }, []);
-
-  // Listen for show-settings events from the tray menu
-  useEffect(() => {
-    const unlistenPromise = listen("show-settings", () => {
-      setShowSettings((prev) => !prev);
     });
     return () => { unlistenPromise.then((u) => u()); };
   }, []);
@@ -143,98 +117,6 @@ function App() {
             <span style={{ fontFamily: "monospace" }}>
               {Math.round(highlight.width)} × {Math.round(highlight.height)}
             </span>
-          </div>
-        </div>
-      )}
-
-      {/* Settings Panel */}
-      {showSettings && (
-        <div
-          style={{
-            position: "fixed",
-            bottom: "20px",
-            right: "20px",
-            width: "260px",
-            backgroundColor: "#1a1a1a",
-            border: "1px solid #333",
-            borderRadius: "6px",
-            boxShadow: "0 4px 12px rgba(0,0,0,0.5)",
-            fontFamily: "system-ui, sans-serif",
-            fontSize: "12px",
-            color: "white",
-            zIndex: 20000,
-            pointerEvents: "auto",
-          }}
-        >
-          {/* Header */}
-          <div
-            style={{
-              display: "flex",
-              justifyContent: "space-between",
-              alignItems: "center",
-              padding: "8px 12px",
-              borderBottom: "1px solid #333",
-              backgroundColor: "#cc0000",
-              borderRadius: "5px 5px 0 0",
-            }}
-          >
-            <span style={{ fontWeight: "bold" }}>xray Settings</span>
-            <button
-              onClick={() => setShowSettings(false)}
-              style={{
-                background: "none",
-                border: "none",
-                color: "white",
-                cursor: "pointer",
-                fontSize: "14px",
-                lineHeight: 1,
-                padding: "0",
-              }}
-            >
-              ×
-            </button>
-          </div>
-
-          {/* Body */}
-          <div style={{ padding: "12px" }}>
-            <div
-              style={{
-                marginBottom: "4px",
-                opacity: 0.6,
-                fontSize: "10px",
-                textTransform: "uppercase",
-                letterSpacing: "0.5px",
-              }}
-            >
-              Capture
-            </div>
-            <label
-              style={{
-                display: "flex",
-                alignItems: "flex-start",
-                gap: "8px",
-                cursor: "pointer",
-                padding: "4px 0",
-              }}
-            >
-              <input
-                type="checkbox"
-                checked={copyToClipboard}
-                onChange={(e) => {
-                  const value = e.target.checked;
-                  setCopyToClipboard(value);
-                  localStorage.setItem("xray-copy-to-clipboard", String(value));
-                }}
-                style={{ marginTop: "1px", accentColor: "#cc0000" }}
-              />
-              <span>
-                Copy to clipboard
-                <br />
-                <span style={{ opacity: 0.5, fontSize: "10px" }}>
-                  좌클릭 시 클립보드에도 저장
-                </span>
-              </span>
-            </label>
           </div>
         </div>
       )}
