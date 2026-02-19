@@ -7,9 +7,6 @@ pub const EVENT_ELEMENT_HOVER: &str = "element-hover";
 /// The event name emitted to the frontend when the user clicks to capture.
 pub const EVENT_CAPTURE_CLICK: &str = "capture-click";
 
-/// The event name emitted to show/hide the settings panel.
-pub const EVENT_SHOW_SETTINGS: &str = "show-settings";
-
 /// The polling interval in milliseconds (approx. 60 FPS).
 pub const POLLING_INTERVAL_MS: u64 = 16;
 
