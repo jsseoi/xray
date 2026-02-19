@@ -11,6 +11,7 @@ use std::ptr;
 
 /// Represents the geometry and metadata of a UI element found via accessibility APIs.
 #[derive(Clone, Debug, serde::Serialize)]
+#[serde(rename_all = "camelCase")]
 pub struct UIElementInfo {
     pub x: f64,
     pub y: f64,
