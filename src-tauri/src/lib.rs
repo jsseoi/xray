@@ -51,6 +51,7 @@ pub fn run() {
     let builder = builder.plugin(tauri_plugin_log::Builder::new().build());
 
     builder
+        .plugin(tauri_plugin_dialog::init())
         .plugin(tauri_plugin_opener::init())
         .manage(AppState {
             current_info: Mutex::new(None),
@@ -83,6 +84,8 @@ pub fn run() {
                         "snip" => start_capture_session(app),
                         "settings" => {
                             if let Some(win) = app.get_webview_window(WINDOW_LABEL_MAIN) {
+                                // Allow mouse interaction so the user can click settings UI
+                                let _ = win.set_ignore_cursor_events(false);
                                 let _ = win.show();
                                 let _ = win.set_focus();
                             }
