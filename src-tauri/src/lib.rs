@@ -10,6 +10,7 @@ use tauri::{
 };
 use std::sync::Mutex;
 use std::sync::atomic::{AtomicBool, Ordering};
+use keyboard_types::Code;
 use crate::constants::{EVENT_SHOW_SETTINGS, WINDOW_LABEL_MAIN};
 
 /// Manages the application's global state.
@@ -25,6 +26,16 @@ pub struct AppState {
 fn hide_window(window: tauri::WebviewWindow, state: tauri::State<AppState>) {
     state.is_snip_active.store(false, Ordering::Relaxed);
     let _ = window.hide();
+}
+
+/// Opens the settings panel: shows the overlay window with cursor interaction enabled.
+fn open_settings_panel(app: &tauri::AppHandle) {
+    if let Some(win) = app.get_webview_window(WINDOW_LABEL_MAIN) {
+        let _ = win.set_ignore_cursor_events(false);
+        let _ = win.show();
+        let _ = win.set_focus();
+    }
+    let _ = app.emit(EVENT_SHOW_SETTINGS, ());
 }
 
 /// Starts capture mode: shows the overlay window and enables accessibility scanning.
@@ -60,10 +71,16 @@ pub fn run() {
         .plugin(
             tauri_plugin_global_shortcut::Builder::new()
                 .with_shortcut("CommandOrControl+Shift+X")
-                .expect("Failed to register global shortcut")
-                .with_handler(|app, _shortcut, event| {
+                .expect("Failed to register capture shortcut")
+                .with_shortcut("CommandOrControl+Comma")
+                .expect("Failed to register settings shortcut")
+                .with_handler(|app, shortcut, event| {
                     if event.state == tauri_plugin_global_shortcut::ShortcutState::Pressed {
-                        start_capture_session(app);
+                        if shortcut.key == Code::Comma {
+                            open_settings_panel(app);
+                        } else {
+                            start_capture_session(app);
+                        }
                     }
                 })
                 .build(),
@@ -82,15 +99,7 @@ pub fn run() {
                     match event.id.as_ref() {
                         "quit" => app.exit(0),
                         "snip" => start_capture_session(app),
-                        "settings" => {
-                            if let Some(win) = app.get_webview_window(WINDOW_LABEL_MAIN) {
-                                // Allow mouse interaction so the user can click settings UI
-                                let _ = win.set_ignore_cursor_events(false);
-                                let _ = win.show();
-                                let _ = win.set_focus();
-                            }
-                            let _ = app.emit(EVENT_SHOW_SETTINGS, ());
-                        }
+                        "settings" => open_settings_panel(app),
                         _ => {}
                     }
                 })
